@@ -16,6 +16,8 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 
+import com.ecn.exchange.serialize.RateParser;
+
 public class ExchangeRateSampleProvider {
 
 	private String exchangeWSUrl;
@@ -23,6 +25,8 @@ public class ExchangeRateSampleProvider {
 	// In production, I would use pooling manager to manage resources. In
 	// this test, for simplicity I would open and close resources
 	final CloseableHttpClient httpClient = HttpClients.createDefault();
+	
+	private RateParser parser = new RateParser();
 
 	public ExchangeRateSampleProvider(final String exchangeWSUrl) {
 		this.exchangeWSUrl = exchangeWSUrl;
@@ -31,7 +35,7 @@ public class ExchangeRateSampleProvider {
 	// TODO This method could be enhanced to make it more generic. Currently, I
 	// assume that we only need API to get month samples for a specific day in a
 	// specific year
-	public void provideMonthlySamplesAtDay(final int day, final int year, final String fromCurrency,
+	public List<Double> provideMonthlySamplesAtDay(final int day, final int year, final String fromCurrency,
 			final String targetCurrency) {
 
 		final List<LocalDate> sampleDates = new ArrayList<LocalDate>();
@@ -42,18 +46,19 @@ public class ExchangeRateSampleProvider {
 			date = date.plusMonths(1);
 		}
 
-		fetchExchangeRates(sampleDates, fromCurrency, targetCurrency);
+		return fetchExchangeRates(sampleDates, fromCurrency, targetCurrency);
 	}
 
-	private void fetchExchangeRates(final List<LocalDate> sampleDates, final String fromCurrency,
+	private List<Double> fetchExchangeRates(final List<LocalDate> sampleDates, final String fromCurrency,
 			final String targetCurrency) {
 
-		sampleDates.stream().map(sampleDate -> fetchExchangeRate(sampleDate, fromCurrency, targetCurrency))
+		return sampleDates.stream()
+				.map(sampleDate -> fetchExchangeRate(sampleDate, fromCurrency, targetCurrency))
 				.collect(Collectors.toList());
 
 	}
 
-	private String fetchExchangeRate(final LocalDate sampleDate, final String fromCurrency,
+	private Double fetchExchangeRate(final LocalDate sampleDate, final String fromCurrency,
 			final String targetCurrency) {
 
 		try {
@@ -62,12 +67,13 @@ public class ExchangeRateSampleProvider {
 
 			final String response = httpClient.execute(fetchRequest, new ExchangeRateResponseHandler());
 			System.out.println(response);
-			return response;
+			return parser.parseResponse(response, targetCurrency);
 		} catch (final IOException e) {
+			//TODO Add specific exception class
 			throw new RuntimeException(e);
 		}
 	}
-
+	
 	private static class ExchangeRateResponseHandler implements ResponseHandler<String> {
 
 		@Override

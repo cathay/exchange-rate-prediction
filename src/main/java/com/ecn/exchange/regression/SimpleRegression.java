@@ -20,21 +20,23 @@ public class SimpleRegression {
 		}
 
 		this.samplePoints = samplePoints;
-		xMean = samplePoints.stream().mapToDouble(p -> p.getX()).sum();
-		yMean = samplePoints.stream().mapToDouble(p -> p.getY()).sum();
+		xMean = samplePoints.stream().mapToDouble(p -> p.getX()).sum()/samplePoints.size();
+		yMean = samplePoints.stream().mapToDouble(p -> p.getY()).sum()/samplePoints.size();
 	}
 
 	private double covariance() {
 		final double product = samplePoints.stream()
 				.map(p -> new Point(p.getX() - xMean, p.getY() - yMean))
 				.mapToDouble(p -> p.getX() * p.getY()).sum();
-		return product / samplePoints.size();
+		
+		return product / (samplePoints.size() -1);
 	}
 
 	private double varianceX() {
 		final double sumOfSquaredDeviations = samplePoints.stream()
 				.mapToDouble(p -> Math.pow(p.getX() - xMean, 2))
 				.sum();
+		
 		return sumOfSquaredDeviations / (samplePoints.size() - 1);
 	}
 
@@ -44,6 +46,7 @@ public class SimpleRegression {
 		}
 		slope = covariance() / varianceX();
 		intercept = yMean - slope * xMean;
+		computed = true;
 	}
 	
 	public double predict(final double x) {
