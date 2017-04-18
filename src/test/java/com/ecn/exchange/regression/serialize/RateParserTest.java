@@ -14,4 +14,11 @@ public class RateParserTest {
 		final Double result = parser.parseResponse("{\"base\":\"USD\",\"date\":\"2016-07-15\",\"rates\":{\"EUR\":0.89863}}", "EUR");
 		assertEquals(0.89863, result,0);
 	}
+	
+	@Test
+	public void testGetRateWithNotUpperCaseKey() {
+		final RateParser parser = new RateParser();
+		final Double result = parser.parseResponse("{\"base\":\"USD\",\"date\":\"2016-07-15\",\"rates\":{\"EUR\":0.89863}}", "EuR");
+		assertEquals(0.89863, result,0);
+	}
 }

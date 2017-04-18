@@ -4,6 +4,8 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
+import com.ecn.exchange.provider.UnknownCurrencyException;
+
 public class RateParser {
 
 	private final JSONParser parser = new JSONParser();
@@ -18,6 +20,11 @@ public class RateParser {
 		}
 
 		final JSONObject rateNode = (JSONObject) root.get("rates");
-		return (Double) rateNode.get(targetCurrency.toUpperCase());
+		final Object result = rateNode.get(targetCurrency.toUpperCase());
+		
+		if(result == null) {
+			throw new UnknownCurrencyException(targetCurrency);
+		}
+		return (Double) result;
 	}
 }

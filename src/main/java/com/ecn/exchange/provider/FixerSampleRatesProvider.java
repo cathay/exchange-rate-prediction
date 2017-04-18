@@ -1,4 +1,4 @@
-package com.ecn.exchange;
+package com.ecn.exchange.provider;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -18,19 +18,15 @@ import org.apache.http.util.EntityUtils;
 
 import com.ecn.exchange.serialize.RateParser;
 
-public class ExchangeRateSampleProvider {
+public class FixerSampleRatesProvider {
 
-	private String exchangeWSUrl;
+	private static final String REST_URL = "http://api.fixer.io/";
 
-	// In production, I would use pooling manager to manage resources. In
+	// TODO In production, I would use pooling manager to manage resources. In
 	// this test, for simplicity I would open and close resources
-	final CloseableHttpClient httpClient = HttpClients.createDefault();
+	private final CloseableHttpClient httpClient = HttpClients.createDefault();
 	
 	private RateParser parser = new RateParser();
-
-	public ExchangeRateSampleProvider(final String exchangeWSUrl) {
-		this.exchangeWSUrl = exchangeWSUrl;
-	}
 
 	// TODO This method could be enhanced to make it more generic. Currently, I
 	// assume that we only need API to get month samples for a specific day in a
@@ -38,6 +34,7 @@ public class ExchangeRateSampleProvider {
 	public List<Double> provideMonthlySamplesAtDay(final int day, final int year, final String fromCurrency,
 			final String targetCurrency) {
 
+		//TODO For simplicity, I ignored validation of year
 		final List<LocalDate> sampleDates = new ArrayList<LocalDate>();
 		LocalDate date = LocalDate.of(year, Month.JANUARY, day);
 
@@ -62,19 +59,25 @@ public class ExchangeRateSampleProvider {
 			final String targetCurrency) {
 
 		try {
-			final HttpGet fetchRequest = new HttpGet(String.format("%s/%s?base=%s&symbols=%s", exchangeWSUrl,
+			final HttpGet fetchRequest = new HttpGet(String.format("%s/%s?base=%s&symbols=%s", REST_URL,
 					sampleDate.toString(), fromCurrency, targetCurrency));
 
-			final String response = httpClient.execute(fetchRequest, new ExchangeRateResponseHandler());
+			final String response = httpClient.execute(fetchRequest, new ExchangeRateResponseHandler(fromCurrency));
+			//FIXME This is only for debug purpose, have to be replaced by log.debug in PROD
 			System.out.println(response);
 			return parser.parseResponse(response, targetCurrency);
 		} catch (final IOException e) {
-			//TODO Add specific exception class
-			throw new RuntimeException(e);
+			throw new RateProviderException(e);
 		}
 	}
 	
 	private static class ExchangeRateResponseHandler implements ResponseHandler<String> {
+
+		private String baseCurrency;
+		
+		public ExchangeRateResponseHandler(final String baseCurrency) {
+			this.baseCurrency = baseCurrency;
+		}
 
 		@Override
 		public String handleResponse(final HttpResponse response) throws ClientProtocolException, IOException {
@@ -82,6 +85,8 @@ public class ExchangeRateSampleProvider {
 			if (status >= 200 && status < 300) {
 				final HttpEntity entity = response.getEntity();
 				return entity != null ? EntityUtils.toString(entity) : null;
+			} else if (status == 422) {
+				throw new UnknownCurrencyException(baseCurrency);
 			} else {
 				throw new ClientProtocolException("Unexpected response status: " + status);
 			}
