@@ -20,6 +20,8 @@ import com.ecn.exchange.serialize.RateParser;
 
 public class FixerSampleRatesProvider {
 
+	//TODO These properties can be injected by DI in PROD
+	
 	private static final String REST_URL = "http://api.fixer.io/";
 
 	// TODO In production, I would use pooling manager to manage resources. In
@@ -69,6 +71,10 @@ public class FixerSampleRatesProvider {
 		} catch (final IOException e) {
 			throw new RateProviderException(e);
 		}
+	}
+	
+	public void dispose() throws IOException {
+		httpClient.close();
 	}
 	
 	private static class ExchangeRateResponseHandler implements ResponseHandler<String> {
